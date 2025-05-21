@@ -103,3 +103,16 @@ homePath = volume:hotwarm/_internaldb/db
 thawedPath = $SPLUNK_DB/_internaldb/thaweddb
 enableDataIntegrityControl=true
 homePath.maxDataSizeMB = 450000
+
+
+
+Index	Daily Ingestion (GB)	Total Volume Size (GB)	Hot and Warm Volume size (GB)	cluster - Cold volume size (GB)	total size per indexer (GB)	hot-total size per indexer (GB)	cold-total size per indexer (GB)
+sbi_sec_linux	1000	241,500 	103,500 	138,000 	1,610 	690 	920
+sbi_sec_windows	2800	676,200 	289,800 	386,400 	4,508 	1,932 	2,576
+sbi_waf_f5	70	16,905 	7,245 	9,660 	113 	48 	64
+sbi_ws_ihs	320	77,280 	33,120 	44,160 	515 	221 	294
+sbi_ws_ohs	250	60,375 	25,875 	34,500 	403 	173 	230
+							
+Indexer 	150						
+RF	3						
+SF 	2						
