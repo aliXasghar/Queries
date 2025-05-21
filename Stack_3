@@ -1,0 +1,114 @@
+Stack Check Level 3. This is mainly for troubleshooting purposes.
+Run these searches under monitoring console app if it is connected to read your indexer data. If not, then run them from search heads.
+Replace sh* and idx* to match your actual Search Head and Indexer host name and fwd* to match your actual Forwarders.
+Time perios is also neec to be adjusted for your troubleshooting purpose.
+
+[Forwarder Performance]
+index=_internal host=fwd* name=thruput average_kbps=* 
+| eval ingest_pipe = if(isnull(ingest_pipe), 0, ingest_pipe)
+| bin _time span=1h
+| stats max(average_kbps) sum(kb) sum(ev) by _time host ingest_pipe
+
+[Forwarder Performance from Indexer Side]
+index=_internal host=idx* source=*metrics.log group=tcpin_connections 
+| eval sourceHost=if(isnull(hostname), sourceHost,hostname) 
+| rename connectionType as connectType 
+| eval connectType=case(fwdType=="uf","univ fwder", fwdType=="lwf", "lightwt fwder",fwdType=="full", "heavy fwder", connectType=="cooked" or connectType=="cookedSSL","Splunk fwder", connectType=="raw" or connectType=="rawSSL","legacy fwder") 
+| eval version=if(isnull(version),"pre 4.2",version) 
+| rename version as Ver 
+| fields connectType sourceIp sourceHost destPort kb tcp_eps tcp_Kprocessed tcp_KBps splunk_server Ver 
+| eval Indexer= splunk_server 
+| bin _time span=1h
+| stats avg(tcp_KBps) avg(tcp_eps) sum(tcp_Kprocessed) sum(kb) by _time connectType sourceIp sourceHost destPort Indexer Ver
+
+[Forwarder File Reading Interval]
+index=_internal sourcetype=splunkd host=fwd* (WatchedFile "will begin reading") file='FILE_TO_MONITOR'
+| sort host thread_id file _time
+| eval date = strftime(_time, "%Y/%m/%d")
+| eval tail_thread_id = if(component="WatchedFile", thread_id, null())
+| filldown tail_thread_id
+| streamstats current=f last(_time) as prev_time by host file tail_thread_id reset_on_change=t
+| search prev_time=*
+| eval reading_interval = _time - prev_time
+| table _time host file reading_interval
+
+[Forwarder Load Balance]
+index=_internal sourcetype=splunkd sourceHost=fwd*
+| rename host as destHost
+| bin _time span=1h
+| stats count sum(kb) by _time destHost
+
+[Forwarder Enqueuing Large File]
+index-_internal host=fwd* Enqueuing a very large file
+
+[Forwarder File Descriptor]
+index-_internal host=fwd* "File descriptor cache is full"
+
+[Scheduled Search Search ID]
+index=_internal sourcetype=scheduler savedsearch_name=<Scheduled Search Name>
+| bin _time span=1d
+| stats count values(_time) as _time by sid
+
+[Search Process Status]
+index=_* data.search_props.sid="*<SID>" sourcetype IN (audittrail splunk_resource_usage splunkd_remote_searches splunkd) sourcetype=splunk_resource_usage
+| bin _time span=5m
+| stats count max(data.normalized_pct_cpu) max(data.pct_memory) max(data.mem_used) max(data.read_mb) values(data.status) by _time host data.pid
+
+[Cluster Hot Bucket Replication Lag]
+index=_internal sourcetype=splunkd source=/opt/splunk/var/log/splunk/metrics.log* component=Metrics (TERM(group=clusterout_connections) TERM(isHotSlice=true)) OR (TERM(group=per_Index_thruput)) earliest=-24h@h latest=@h
+| bin _time span=10s
+| rex field=name "^(?<dest_peer>[^:]+):(?<dest_port>[^:]+):(?<bucket>[^:]+)"
+| rex field=bucket "^(?<repl_index>[^~]+)"
+| eval repl_tcp_KBps = if(group="clusterout_connections", tcp_KBps, null()), repl_tcp_avg_thruput = if(group="clusterout_connections", tcp_avg_thruput, null()), repl_kb = if(group="clusterout_connections", kb, null())
+| eval index = if(group="clusterout_connections", repl_index, series)
+| stats avg(repl_tcp_KBps) as repl_tcp_KBps avg(repl_tcp_avg_thruput) as repl_tcp_avg_thruput sum(repl_kb) as repl_kb avg(kbps) as ingestion_kbps sum(kb) as ingestion_kb by _time host index
+| eval repl_lag = round((ingestion_kb - repl_kb) / repl_tcp_avg_thruput)
+
+[Cluster Hot Bucket Status]
+| dbinspect index=* splunk_server=* state=hot earliest=-24h@h latest=@h
+| fields bucketId path id state splunk_server modTime
+| rex field=path ".*\/db\/(?<bucketName>.*)"
+| sort 0 bucketId
+
+[Server.conf]
+| rest /services/configs/conf-server
+| fields - eai:*
+| eval title = splunk_server."#".title
+| untable title property value
+
+[Limits.conf]
+| rest /services/configs/conf-limits
+| fields - eai:*
+| eval title = splunk_server."#".title
+| untable title property value
+
+[KV Store Status]
+| rest splunk_server=* /services/kvstore/status
+
+[Search Resource Usage on SH]
+(index=_introspection sourcetype=splunk_resource_usage component=perprocess host=sh* data.search_props.sid=*) 
+| eval pct_cpu = 'data.normalized_pct_cpu', mem_used = 'data.mem_used' 
+| rename data.search_props.* as * 
+| stats count max(pct_cpu) max(mem_used) earliest(_time) latest(_time) by app user sid 
+| join sid 
+    [ search index=_audit host=sh* sourcetype=audittrail action=search info=granted OR info=completed OR info=canceled OR info=failed 
+    | rex "search='(?<search_text>[\S\s]+)('(, autojoin|\]\[n\/a\])|'\]$)" 
+    | eval search_text = if(isnull(search_text), search, search_text) 
+    | stats values(search) as search_text latest(info) as latest_status latest(total_run_time) as total_run_time by search_id 
+    | rex field=search_id mode=sed "s/(^'|'$)//g" 
+    | rex field=search_text mode=sed "s/(^'|'$)//g" 
+    | rename search_id as sid ]
+    
+ [DMA Done Buckets]
+ | rest splunk_server=local /services/cluster/manager/buckets summaries=true
+| search index=main
+| fields bucket_size frozen id index *.status *_DM_*.state
+| foreach *_DM_search_*.state 
+    [ eval <<MATCHSEG2>>_done = if ('<<FIELD>>' == "done", if(isnull('<<MATCHSEG2>>_done'), 1, '<<MATCHSEG2>>_done' + 1), '<<MATCHSEG2>>_done')
+    | eval <<MATCHSEG2>>_hot_done = if ('<<FIELD>>' == "hot_done", if(isnull('<<MATCHSEG2>>_hot_done'), 1, '<<MATCHSEG2>>_hot_done' + 1), '<<MATCHSEG2>>_hot_done') ]
+| foreach *.status
+    [ eval status = if('<<FIELD>>' == "Complete", "warm", status) ]
+| search status=warm
+| fields index id status *_done
+| fields - *_hot_done
+| rex field=id "buckets\/(?<id>.*)"
