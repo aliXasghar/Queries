@@ -1,0 +1,6 @@
+# Gives lis of Splunk Enabled correlation_searches and their cron
+
+| rest splunk_server=* count=0 /services/saved/searches
+| where match('action.correlationsearch.enabled',"1|[Tt]|[Tt][Rr][Uu][Ee]")
+| where disabled=0
+| table title cron_schedule dispatch.earliest_time dispatch.latest_time
