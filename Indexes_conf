@@ -1,0 +1,105 @@
+[default]
+repFactor = auto
+coldPath = volume:cold/$_index_name/colddb
+homePath = volume:hotwarm/$_index_name/db
+thawedPath = $SPLUNK_DB/$_index_name/thaweddb
+tstatsHomePath = volume:hotwarm/$_index_name/datamodel_summary
+maxDataSize = auto_high_volume
+repFactor = auto
+frozenTimePeriodInSecs = 25920000
+enableDataIntegrityControl=true
+coldToFrozenScript = "/opt/splunk/bin/python" "/opt/splunk/etc/peer-apps/SBI_indexes/bin/ColdToFrozenScript.py"
+
+[volume:hotwarm]
+path = /opt/data/hot_warm
+maxVolumeDataSizeMB = 9000000
+
+[volume:cold]
+path = /opt/data/cold
+maxVolumeDataSizeMB = 9000000
+
+
+
+Common:
+
+[sbi_*]
+coldPath = volume:cold/sbi_*/colddb
+homePath = volume:hotwarm/sbi_*/db
+thawedPath = $SPLUNK_DB/sbi_*/thaweddb
+enableDataIntegrityControl=true
+
+
+Custom Sizes:
+[sbi_sec_windows]
+coldPath = volume:cold/sbi_sec_windows/colddb
+homePath = volume:hotwarm/sbi_sec_windows/db
+thawedPath = $SPLUNK_DB/sbi_sec_windows/thaweddb
+enableDataIntegrityControl=true
+maxTotalDataSizeMB = 5000000
+homePath.maxDataSizeMB = 1000000
+
+[sbi_fw_paloalto]
+coldPath = volume:cold/sbi_fw_paloalto/colddb
+homePath = volume:hotwarm/sbi_fw_paloalto/db
+thawedPath = $SPLUNK_DB/sbi_fw_paloalto/thaweddb
+enableDataIntegrityControl=true
+maxTotalDataSizeMB = 5000000
+
+[sbi_fw_ciscoasa]
+coldPath = volume:cold/sbi_fw_ciscoasa/colddb
+homePath = volume:hotwarm/sbi_fw_ciscoasa/db
+thawedPath = $SPLUNK_DB/sbi_fw_ciscoasa/thaweddb
+enableDataIntegrityControl=true
+maxTotalDataSizeMB = 5000000
+
+[sbi_fw_fortinet]
+coldPath = volume:cold/sbi_fw_fortinet/colddb
+homePath = volume:hotwarm/sbi_fw_fortinet/db
+thawedPath = $SPLUNK_DB/sbi_fw_fortinet/thaweddb
+maxTotalDataSizeMB = 5000000
+enableDataIntegrityControl=true
+
+
+[sbi_fw_checkpoint]
+coldPath = volume:cold/sbi_fw_checkpoint/colddb
+homePath = volume:hotwarm/sbi_fw_checkpoint/db
+thawedPath = $SPLUNK_DB/sbi_fw_checkpoint/thaweddb
+maxTotalDataSizeMB = 5000000
+enableDataIntegrityControl=true
+
+[sbi_waf_barracuda]
+coldPath = volume:cold/sbi_waf_barracuda/colddb
+homePath = volume:hotwarm/sbi_waf_barracuda/db
+thawedPath = $SPLUNK_DB/sbi_waf_barracuda/thaweddb
+maxTotalDataSizeMB = 3000000
+enableDataIntegrityControl=true
+
+[sbi_fw_barracuda]
+coldPath = volume:cold/sbi_fw_barracuda/colddb
+homePath = volume:hotwarm/sbi_fw_barracuda/db
+thawedPath = $SPLUNK_DB/sbi_fw_barracuda/thaweddb
+maxTotalDataSizeMB = 3000000
+enableDataIntegrityControl=true
+
+
+[sbi_proxy_blue_coat]
+coldPath = volume:cold/sbi_proxy_blue_coat/colddb
+homePath = volume:hotwarm/sbi_proxy_blue_coat/db
+thawedPath = $SPLUNK_DB/sbi_proxy_blue_coat/thaweddb
+maxTotalDataSizeMB = 3000000
+enableDataIntegrityControl=true
+
+
+[sbi_sec_windowsad]
+coldPath = volume:cold/sbi_sec_windowsad/colddb
+homePath = volume:hotwarm/sbi_sec_windowsad/db
+thawedPath = $SPLUNK_DB/sbi_sec_windowsad/thaweddb
+maxTotalDataSizeMB = 4000000
+enableDataIntegrityControl=true
+
+[_internal]
+coldPath = volume:cold/_internaldb/colddb
+homePath = volume:hotwarm/_internaldb/db
+thawedPath = $SPLUNK_DB/_internaldb/thaweddb
+enableDataIntegrityControl=true
+homePath.maxDataSizeMB = 450000
